@@ -1,0 +1,123 @@
+DATASET OVERVIEW
+
+The dataset consists of 1000 rows and 11 columns, capturing employee or customer information. The columns included are customer_id, customer_name, age, gender, email, city, salary, joining_date, department, employment_type, and performance_rating. Overall, the dataset is relatively complete, but there are multiple data quality issues, missing values, and anomalies that require immediate attention before this data can be reliably used for business intelligence or predictive modeling.
+
+
+COLUMN-BY-COLUMN ANALYSIS
+
+customer_id
+Detected Type: Numeric
+Completeness: 1000 non-null (0 missing)
+Uniqueness: 990 unique values (99.00%)
+Insight: As a unique identifier, this column should have 100% uniqueness. The presence of 990 unique values in 1000 rows indicates there are 10 duplicate records or reused IDs.
+
+customer_name
+Detected Type: Text/Categorical
+Completeness: 980 non-null (20 missing)
+Uniqueness: 970 unique values (97.00%)
+Insight: There are 20 missing names. The 97% uniqueness is expected as some individuals may share the same name, but combined with missing values, it complicates record identification.
+
+age
+Detected Type: Numeric
+Completeness: 973 non-null (27 missing)
+Uniqueness: 51 unique values (5.10%)
+Insight: There are 27 unrecorded ages. The distribution of unique values is normal for age data, but severe outliers exist.
+
+gender
+Detected Type: Text/Categorical
+Completeness: 985 non-null (15 missing)
+Uniqueness: 3 unique values (0.30%)
+Insight: 15 records lack gender information. The 3 unique categories likely represent standard classifications (e.g., Male, Female, Other/Non-binary).
+
+email
+Detected Type: Text/Categorical
+Completeness: 1000 non-null (0 missing)
+Uniqueness: 985 unique values (98.50%)
+Insight: While there are no missing emails, there are only 985 unique emails for 1000 rows. This means 15 emails are shared or duplicated across multiple records, which is a major red flag for communication and identity validation.
+
+city
+Detected Type: Text/Categorical
+Completeness: 985 non-null (15 missing)
+Uniqueness: 9 unique values (0.90%)
+Insight: Operations or customer bases are distributed across 9 distinct cities. 15 records are missing location data.
+
+salary
+Detected Type: Numeric
+Completeness: 983 non-null (17 missing)
+Uniqueness: 953 unique values (95.30%)
+Insight: 17 records lack salary data. The high uniqueness percentage is expected for continuous financial data, but extreme anomalies are present.
+
+joining_date
+Detected Type: Text/Categorical
+Completeness: 990 non-null (10 missing)
+Uniqueness: 708 unique values (70.80%)
+Insight: 10 records are missing a joining date. The column is currently detected as text and will need to be converted to a proper date format for time-series analysis.
+
+department
+Detected Type: Text/Categorical
+Completeness: 1000 non-null (0 missing)
+Uniqueness: 12 unique values (1.20%)
+Insight: Perfect completeness. The data represents individuals distributed across 12 distinct departments.
+
+employment_type
+Detected Type: Text/Categorical
+Completeness: 1000 non-null (0 missing)
+Uniqueness: 3 unique values (0.30%)
+Insight: Perfect completeness. Individuals fall into 3 distinct employment types (e.g., Full-time, Part-time, Contract).
+
+performance_rating
+Detected Type: Text/Categorical
+Completeness: 985 non-null (15 missing)
+Uniqueness: 4 unique values (0.40%)
+Insight: 15 missing ratings. The 4 unique values indicate a standardized discrete rating scale, though currently stored as text.
+
+
+NUMERIC DATA INSIGHTS
+
+customer_id Analysis
+The IDs range from a minimum of 10001 to a maximum of 10990. The mean (10496.06) and median (10495.5) are nearly identical, indicating a sequential and uniform distribution of generated IDs. 
+
+Age Analysis
+The age column ranges from a minimum of 5 to a maximum of 150. The mean age is 35.86, and the median is 35, showing that the central tendency of the data is reasonable for a workforce or adult customer base. However, the extreme minimum and maximum values are physically impossible or legally impermissible for an employment dataset.
+
+Salary Analysis
+Salaries range from a minimum of -28,673 to a maximum of 135,672. The average salary is 63,413.54, closely aligning with the median of 64,883. This indicates a relatively symmetrical distribution for the majority of the data. The severe risk here is the minimum salary falling well below zero, indicating a significant data entry or processing error.
+
+
+DATA QUALITY & ANOMALIES
+
+Primary Key Duplication
+There are 10 duplicate customer_id values. A unique identifier must be strictly unique; duplicates risk joining errors and corrupted downstream analytics.
+
+Data Entry Extremes
+The age column contains biologically impossible or policy-violating values, specifically a minimum age of 5 and a maximum age of 150. 
+The salary column contains a minimum value of -28,673. Negative salaries are financially invalid and represent a critical data entry flaw.
+
+Duplicate Contact Information
+Despite having 1000 rows and 0 missing emails, there are only 985 unique emails. 15 records share an email address, which either points to duplicate system entries or shared family/group accounts.
+
+Missing Values
+Several columns contain missing data, most notably age (27 missing), customer_name (20 missing), salary (17 missing), and 15 missing values each in gender, city, and performance_rating.
+
+
+CLEANING RECOMMENDATIONS
+
+1. Deduplicate Records
+Isolate the 10 duplicate customer_id rows and the 15 duplicate email rows. Determine if these are exact duplicate rows that can be dropped, or if they are conflicting records that require a rule-based resolution (e.g., keeping the most recently updated row).
+
+2. Resolve Anomalies and Outliers
+Investigate the negative salary values. If they represent a data entry error (e.g., a dash typed before the number), convert them to absolute values. Otherwise, convert them to nulls. 
+Apply a realistic threshold to the age column (e.g., 18 to 75). Any age of 5 or 150 should be flagged and converted to missing (null) to prevent skewed demographic analytics.
+
+3. Handle Missing Data
+For missing numeric values (age, salary), evaluate whether to impute using the median for the respective department/employment_type, or leave them as nulls depending on the downstream use case. 
+For missing categorical values (city, gender, performance_rating), label them as "Unknown" or "Not Provided" to retain the rest of the row's valuable data.
+
+4. Standardize Data Types
+Cast the joining_date column from Text to a standard Datetime format to enable tenure calculations and seasonal trend analysis. 
+Evaluate performance_rating to see if it should be converted to an ordered numeric scale (e.g., 1 to 4) for correlation analysis with salary and age.
+
+
+EXECUTIVE SUMMARY
+
+The provided dataset contains 1000 records profiling individuals across various departments, locations, and compensation bands. While structural completeness is generally high, there are critical integrity risks that compromise the dataset in its current state. Specifically, the presence of duplicate primary keys (customer_id), invalid financial metrics (negative salaries), and impossible demographic data (ages of 5 and 150) pose significant risks to any reporting or modeling efforts. By executing the recommended data cleaning steps primarily deduplication, anomaly nullification, and type casting the organization can restore data trust and safely utilize this dataset for strategic human resources or customer relations insights.
