@@ -1,0 +1,323 @@
+{
+  "name": "data analysis agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -96,
+        -48
+      ],
+      "id": "ec178886-cd99-4f2d-9850-705af4d1b575",
+      "name": "Telegram Trigger",
+      "webhookId": "2466b3e3-646a-42e5-8f3f-453bcb9e7b70",
+      "credentials": {
+        "telegramApi": {
+          "id": "WQ0qKYW7BOoGA0zO",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.document.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        128,
+        -48
+      ],
+      "id": "70f073b6-8972-41c6-b4b7-c23e4172d708",
+      "name": "Get a file",
+      "webhookId": "3aca32a2-f4de-43c9-a94a-42465fd2bd4b",
+      "credentials": {
+        "telegramApi": {
+          "id": "WQ0qKYW7BOoGA0zO",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        -144
+      ],
+      "id": "609ca7f2-a47e-42d9-8eac-0b7c36b9c351",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "12f1dd02-880b-495d-b43a-31058cf43188",
+              "leftValue": "={{ $json.result.file_path }}",
+              "rightValue": ".xlsx",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        -48
+      ],
+      "id": "ffa9fb52-5f6f-49b7-bcbe-ba6997522ad7",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        48
+      ],
+      "id": "6a54f3f3-ab99-487d-b83e-db9c12893726",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst items = $input.all();\nif (!items.length) return [{ json: { error: \"No data found\" } }];\n\nconst rows = items.map(item => item.json);\nconst totalRows = rows.length;\nconst columnNames = Object.keys(rows[0] || {});\nconst totalColumns = columnNames.length;\n\nconst summary = {\n  overview: {\n    totalRows,\n    totalColumns,\n    columns: columnNames\n  },\n  columns: {}\n};\n\nfor (const col of columnNames) {\n  let nullOrBlankCount = 0;\n  const values = [];\n  const numericValues = [];\n\n  for (const row of rows) {\n    const val = row[col];\n    if (val === null || val === undefined || String(val).trim() === '') {\n      nullOrBlankCount++;\n    } else {\n      values.push(val);\n      const num = Number(val);\n      if (!isNaN(num) && typeof val !== 'boolean') {\n        numericValues.push(num);\n      }\n    }\n  }\n\n  const uniqueValues = new Set(values);\n  const isNumeric = numericValues.length > 0 && numericValues.length >= values.length * 0.8;\n\n  const colStats = {\n    detectedType: isNumeric ? 'Numeric' : 'Text/Categorical',\n    nonNullCount: values.length,\n    missingOrBlankCount: nullOrBlankCount,\n    uniqueCount: uniqueValues.size,\n    uniquePercentage: ((uniqueValues.size / totalRows) * 100).toFixed(2) + '%'\n  };\n\n  if (isNumeric && numericValues.length > 0) {\n    numericValues.sort((a, b) => a - b);\n    const sum = numericValues.reduce((acc, curr) => acc + curr, 0);\n    const mean = sum / numericValues.length;\n    const mid = Math.floor(numericValues.length / 2);\n    const median = numericValues.length % 2 !== 0 \n      ? numericValues[mid] \n      : (numericValues[mid - 1] + numericValues[mid]) / 2;\n\n    colStats.numericMetrics = {\n      min: numericValues[0],\n      max: numericValues[numericValues.length - 1],\n      mean: Number(mean.toFixed(2)),\n      median: Number(median.toFixed(2))\n    };\n  }\n\n  summary.columns[col] = colStats;\n}\n\nreturn [{ json: summary }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -48
+      ],
+      "id": "7ef12672-3b33-44ff-ad91-7f9c95280c1e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the dataset summary JSON:\n{{ JSON.stringify($json) }}",
+        "options": {
+          "systemMessage": "You are a senior data analyst. \n\nYou will receive a JSON object containing verified, pre-computed statistics for a dataset. \n\nRULES:\n1. Do not invent, alter, or recalculate any metrics, row counts, column counts, or percentages.\n2. Use the provided metrics directly to generate the report sections.\n3. Focus your response on interpreting the numbers, diagnosing potential data quality issues, identifying business risks, and providing actionable cleaning steps.\n\nGenerate a structured text report with the following sections:\n1. DATASET OVERVIEW \n2. COLUMN-BY-COLUMN ANALYSIS\n3. NUMERIC DATA INSIGHTS\n4. DATA QUALITY & ANOMALIES\n5. CLEANING RECOMMENDATIONS\n6. EXECUTIVE SUMMARY\n\nFormat the output cleanly without markdown styling like asterisks (* or **), hashtags (#), or HTML tags, so it is directly compatible with downstream document converters."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1024,
+        -48
+      ],
+      "id": "5d41c57d-1187-4c09-9227-270a34635898",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-pro-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        192
+      ],
+      "id": "8cab3ffa-2c7c-4ef8-b9b7-a7b995be7683",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "output",
+        "options": {
+          "fileName": "Data Analysis Report"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1376,
+        -48
+      ],
+      "id": "e7631db8-dbaa-4602-9c92-5ad7e9f45293",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        -48
+      ],
+      "id": "9f3387f5-87f8-4e17-8cde-2cc0e31dd301",
+      "name": "Send a document",
+      "webhookId": "9b09cf24-4ace-4a99-9a50-368fdea92e5e",
+      "credentials": {
+        "telegramApi": {
+          "id": "WQ0qKYW7BOoGA0zO",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a71a4211-70be-4877-bf37-1401323ccb19",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "127bcebb4171a5d644bd4297bc0831d0a053565d844b499f1ddddf59cca7c39d"
+  },
+  "nodeGroups": [],
+  "id": "zKtvtraEmlzFWs5i",
+  "tags": []
+}
